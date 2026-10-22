@@ -77,9 +77,6 @@ html { -webkit-text-size-adjust: 100%; scroll-padding-top: calc(var(--bar-h) + v
 
 body {
   background-color: var(--bg);
-  background-image:
-    repeating-linear-gradient(0deg, transparent 0 39px, rgba(166, 132, 238, 0.035) 39px 40px),
-    repeating-linear-gradient(90deg, transparent 0 39px, rgba(166, 132, 238, 0.035) 39px 40px);
   color: var(--text);
   font-family: var(--font-mono);
   font-size: var(--fs-md);
@@ -108,6 +105,30 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 .skip-link:focus { top: var(--sp-2); }
 
 .num { font-variant-numeric: tabular-nums; }
+
+/* ---------------------------------------------------------------- background grid
+   Fixed to the viewport. js/bg-fx.js drifts it and moves the spotlight with transforms only.
+   The 40px period here must match CELL in js/bg-fx.js. */
+
+.bg-fx { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.bg-grid, .bg-spot-grid {
+  position: absolute; inset: -40px;
+  background-image:
+    repeating-linear-gradient(0deg, transparent 0 39px, var(--grid-line) 39px 40px),
+    repeating-linear-gradient(90deg, transparent 0 39px, var(--grid-line) 39px 40px);
+  will-change: transform;
+}
+.bg-grid { --grid-line: rgba(166, 132, 238, 0.035); }
+.bg-spot {
+  position: absolute; left: 0; top: 0; width: 560px; height: 560px; overflow: hidden;
+  will-change: transform;
+  -webkit-mask-image: radial-gradient(closest-side, #000 0%, rgba(0, 0, 0, 0.5) 45%, transparent 100%);
+  mask-image: radial-gradient(closest-side, #000 0%, rgba(0, 0, 0, 0.5) 45%, transparent 100%);
+}
+.bg-spot::before { content: ''; position: absolute; inset: 0; background: radial-gradient(closest-side, rgba(166, 132, 238, 0.1), transparent 75%); }
+.bg-spot-grid { --grid-line: rgba(196, 168, 255, 0.3); }
+.bg-fx.is-static .bg-spot { display: none; }
+@media print { .bg-fx { display: none !important; } }
 .sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
 .mt-3 { margin-top: var(--sp-3); }
 
