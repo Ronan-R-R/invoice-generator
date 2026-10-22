@@ -930,7 +930,7 @@
     });
     if (!ok) return;
     nextId = 1;
-    rows = [newRow()];
+    rows = [];
     $('job-name').value = '';
     $('inv-date').value = core.localDateISO();
     core.EXTRAS.forEach(e => { $('e-' + e.key + '-days').value = 0; });
@@ -1044,11 +1044,7 @@
 
     $('inv-date').value = core.localDateISO();
     $('inv-number').value = previewNumber();
-    rows = [
-      newRow({ desc: 'Pre-production', type: 'Pre-Production', call: '', wrap: '', days: 2 }),
-      newRow({ desc: 'Shoot day 1', call: '06:00', wrap: '18:00' }),
-      newRow({ desc: 'Shoot day 2', call: '06:30', wrap: '21:00' }),
-    ];
+    rows = [];
     updateInvStatus();
     renderTable();
     setAutosave('idle', 'Not saved yet');

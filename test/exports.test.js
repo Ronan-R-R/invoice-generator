@@ -107,11 +107,39 @@ test('xlsx output contains the purple styling', () => {
   assert.ok(!/C8921A/i.test(xml), 'no old orange left');
 });
 
+test('xlsx puts text only in the top-left cell of each merge, where Excel shows it', () => {
+  const invoice = core.computeInvoice(sampleState());
+  const { wb } = buildWorkbook(XLSX, { header: header(), invoice });
+  const ws = roundTrip(wb).book.Sheets.Invoice;
+  const hidden = [];
+  ws['!merges'].forEach(m => {
+    for (let r = m.s.r; r <= m.e.r; r++) {
+      for (let c = m.s.c; c <= m.e.c; c++) {
+        if (r === m.s.r && c === m.s.c) continue;
+        const cell = ws[XLSX.utils.encode_cell({ r, c })];
+        if (cell && cell.v !== '' && cell.v != null) hidden.push(XLSX.utils.encode_cell({ r, c }) + '=' + cell.v);
+      }
+    }
+  });
+  assert.deepEqual(hidden, []);
+});
+
+test('xlsx total rows carry their labels', () => {
+  const invoice = core.computeInvoice(sampleState());
+  const { wb } = buildWorkbook(XLSX, { header: header(), invoice });
+  const ws = roundTrip(wb).book.Sheets.Invoice;
+  for (const label of ['Subtotal, taxable', 'TOTAL TAXABLE', 'Less: PAYE 25%', 'Net taxable (after PAYE)', 'EXTRAS SUBTOTAL']) {
+    const row = findRowByLabel(ws, 'J', label);
+    assert.ok(row, label + ' is in the visible merge cell');
+    assert.ok(ws['M' + row].f, label + ' row has its amount formula');
+  }
+});
+
 test('xlsx with no timesheet rows still builds and totals to extras only', () => {
   const invoice = core.computeInvoice(sampleState({ rows: [] }));
   const { wb } = buildWorkbook(XLSX, { header: header(), invoice });
   const ws = roundTrip(wb).book.Sheets.Invoice;
-  const sub = findRowByLabel(ws, 'K', 'Subtotal, taxable');
+  const sub = findRowByLabel(ws, 'J', 'Subtotal, taxable');
   assert.equal(ws['M' + sub].f, '0');
   assert.equal(invoice.grand, 500);
 });

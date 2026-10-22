@@ -236,7 +236,8 @@
     const totalLine = (label, formula, value, rowBg, lblOpts, valOpts, height) => {
       rowH[R - 1] = { hpt: height || 16 };
       fill(R, { bg: rowBg });
-      put(ws, 'K' + R, label, Object.assign({ bg: rowBg, sz: 9, align: 'right' }, lblOpts));
+      // J is the top-left of the J:L merge, the only cell Excel displays
+      put(ws, 'J' + R, label, Object.assign({ bg: rowBg, sz: 9, align: 'right' }, lblOpts));
       put(ws, 'M' + R, { f: formula, v: value }, Object.assign({ bg: rowBg, sz: 10, bold: true, align: 'right', numFmt: RAND, border: true }, valOpts));
       merge(R, 9, 11);
       return R++;
