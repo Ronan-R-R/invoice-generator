@@ -135,14 +135,38 @@ test('xlsx total rows carry their labels', () => {
   }
 });
 
-test('xlsx widens columns B and H to fit the longest value', () => {
+function mergeAt(ws, addr) {
+  const { r, c } = XLSX.utils.decode_cell(addr);
+  return ws['!merges'].find(m => m.s.r === r && m.s.c === c);
+}
+
+test('xlsx widens column B to fit the longest timesheet description', () => {
   const longDesc = 'Shoot day 3, second unit, Clanwilliam dam location';
-  const longAddr = '14 Bree Street, Cape Town City Centre, Western Cape';
   const invoice = core.computeInvoice(sampleState({ rows: [{ type: 'Shoot Day', desc: longDesc, call: '07:00', wrap: '17:00' }] }));
-  const { wb } = buildWorkbook(XLSX, { header: header({ fromAddr: longAddr }), invoice });
-  const cols = wb.Sheets.Invoice['!cols'];
-  assert.ok(cols[1].wch >= longDesc.length, 'B fits the description, got ' + cols[1].wch);
-  assert.ok(cols[7].wch >= longAddr.length, 'H fits the crew address, got ' + cols[7].wch);
+  const { wb } = buildWorkbook(XLSX, { header: header(), invoice });
+  assert.ok(wb.Sheets.Invoice['!cols'][1].wch >= longDesc.length, 'got ' + wb.Sheets.Invoice['!cols'][1].wch);
+});
+
+test('xlsx merges party values across B:E and H:K instead of widening the columns', () => {
+  const longAddr = 'Unit 4, The Old Biscuit Mill, 373-375 Albert Road, Woodstock, Cape Town';
+  const invoice = core.computeInvoice(sampleState({ rows: [] }));
+  const { wb } = buildWorkbook(XLSX, { header: header({ toAddr: longAddr, fromAddr: longAddr, bankName: 'FNB' }), invoice });
+  const ws = wb.Sheets.Invoice;
+
+  const toAddr = Object.keys(ws).find(a => a.startsWith('B') && ws[a].v === longAddr);
+  const fromAddr = Object.keys(ws).find(a => a.startsWith('H') && ws[a].v === longAddr);
+  const bank = Object.keys(ws).find(a => a.startsWith('B') && ws[a].v === 'FNB');
+  assert.deepEqual(mergeAt(ws, toAddr).e.c, 4, 'to-party value spans B:E');
+  assert.deepEqual(mergeAt(ws, fromAddr).e.c, 10, 'from-party value spans H:K');
+  assert.deepEqual(mergeAt(ws, bank).e.c, 4, 'bank value spans B:E');
+  assert.equal(ws[toAddr].s.alignment.wrapText, true);
+
+  assert.equal(ws['!cols'][1].wch, 26, 'B is not stretched by party values');
+  assert.equal(ws['!cols'][7].wch, 11, 'H is not stretched by party values');
+  const row = Number(toAddr.slice(1));
+  assert.ok(ws['!rows'][row - 1].hpt > 15, 'row grows to show the wrapped address, got ' + ws['!rows'][row - 1].hpt);
+  const short = Object.keys(ws).find(a => a.startsWith('B') && ws[a].v === 'Karoo Light Pictures');
+  assert.equal(ws['!rows'][Number(short.slice(1)) - 1].hpt, 15, 'a short value keeps the normal height');
 });
 
 test('xlsx keeps B and H at their minimum widths for short values and caps runaway text', () => {

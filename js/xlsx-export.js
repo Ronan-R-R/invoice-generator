@@ -83,7 +83,15 @@
       R++;
     };
     const lbl = { color: C.TEXT_MUTED, sz: 9, align: 'right', indent: 1 };
-    const val = { color: C.TEXT, sz: 10, bold: true, indent: 1 };
+    const val = { color: C.TEXT, sz: 10, bold: true, indent: 1, wrap: true };
+    // Party and bank values span B:E and H:K so they never stretch the timesheet columns.
+    // Excel does not auto-fit row height on merged cells, so heights are set once widths are known.
+    const wrapped = [];
+    const putValue = (col, from, to, value, bg) => {
+      put(ws, col + R, value || '', Object.assign({ bg }, val));
+      merge(R, from, to);
+      if (value) wrapped.push({ r: R, text: String(value), from, to });
+    };
 
     // Title
     rowH[R - 1] = { hpt: 36 };
@@ -118,12 +126,12 @@
       if (toData[i]) {
         fill(R, { bg: bgL }, 0, 5);
         put(ws, 'A' + R, toData[i][0], Object.assign({ bg: bgL }, lbl));
-        put(ws, 'B' + R, toData[i][1] || '', Object.assign({ bg: bgL }, val));
+        putValue('B', 1, 4, toData[i][1], bgL);
       }
       if (fromData[i]) {
         fill(R, { bg: bgR }, 6, 11);
         put(ws, 'G' + R, fromData[i][0], Object.assign({ bg: bgR }, lbl));
-        put(ws, 'H' + R, fromData[i][1] || '', Object.assign({ bg: bgR }, val));
+        putValue('H', 7, 10, fromData[i][1], bgR);
       }
       R++;
     }
@@ -136,7 +144,7 @@
       const bg = i % 2 === 0 ? C.ACCENT_BG : C.WHITE;
       fill(R, { bg: C.WHITE });
       put(ws, 'A' + R, b[0], Object.assign({ bg }, lbl));
-      put(ws, 'B' + R, b[1] || '', Object.assign({ bg }, val));
+      putValue('B', 1, 4, b[1], bg);
       R++;
     });
 
@@ -293,8 +301,8 @@
       { bg: C.OFF_WHITE, color: C.TEXT_MUTED, sz: 8, italic: true, indent: 1 });
     merge(R, 0, NCOLS - 1);
 
-    // Excel cannot auto-fit a column on open, so B and H are sized from their longest value.
-    // Text inside a multi-column merge belongs to the merge, not the column, so it is skipped.
+    // Excel cannot auto-fit a column on open, so B is sized from its longest timesheet description.
+    // Text inside a multi-column merge (party values, headings) belongs to the merge and is skipped.
     const inMerge = (r, c) => merges.some(m => m.s.c !== m.e.c && r >= m.s.r && r <= m.e.r && c >= m.s.c && c <= m.e.c);
     const fitWidth = (col, min, max) => {
       const c = col.charCodeAt(0) - 65;
@@ -310,12 +318,21 @@
       return Math.min(Math.max(min, Math.ceil(longest) + 2), max);
     };
 
+    const widths = [13, 26, 6, 7, 11, 7, 11, 7, 11, 7, 11, 6, 13];
+    widths[1] = fitWidth('B', 26, 80);
+
+    const lineCount = ({ text, from, to }) => {
+      let span = 0;
+      for (let c = from; c <= to; c++) span += widths[c];
+      return Math.ceil((text.length * 1.1) / Math.max(span - 2, 1));
+    };
+    const linesByRow = {};
+    wrapped.forEach(w => { linesByRow[w.r] = Math.max(linesByRow[w.r] || 1, lineCount(w)); });
+    Object.keys(linesByRow).forEach(r => { if (linesByRow[r] > 1) rowH[r - 1] = { hpt: 15 * linesByRow[r] }; });
+
     ws['!ref'] = 'A1:' + colName(NCOLS - 1) + R;
     ws['!merges'] = merges;
     ws['!rows'] = rowH;
-    const widths = [13, 26, 6, 7, 11, 7, 11, 7, 11, 7, 11, 6, 13];
-    widths[1] = fitWidth('B', 26, 80);
-    widths[7] = fitWidth('H', 11, 80);
     ws['!cols'] = widths.map(wch => ({ wch }));
 
     const wb = XLSX.utils.book_new();
