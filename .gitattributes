@@ -1,0 +1,3 @@
+* text=auto eol=lf
+# Keep the vendored bundle byte-exact so its SHA-256 in the README stays valid
+vendor/** -text

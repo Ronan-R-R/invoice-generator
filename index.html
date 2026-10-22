@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="description" content="Crew invoice generator for South African commercial productions. CPA day rates, overtime, turnaround penalties, PAYE and non-taxable extras, exported to XLSX or PDF.">
+<meta name="theme-color" content="#0e0c13">
+<title>Invoice Generator</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="css/styles.css">
+<script src="vendor/xlsx-js-style-1.2.0.min.js" defer></script>
+<script src="js/core.js" defer></script>
+<script src="js/xlsx-export.js" defer></script>
+<script src="js/print.js" defer></script>
+<script src="js/app.js" defer></script>
+</head>
+<body>
+
+<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" class="sprite" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-mark" viewBox="0 0 32 32"><rect width="32" height="32" rx="4" fill="#8f63e6"/><path d="M9 6h10l5 5v15H9z" fill="#120d1c"/><path d="M12 15h9M12 19h9M12 23h5" stroke="#c9aef7" stroke-width="2"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
+    <symbol id="i-save" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/></symbol>
+    <symbol id="i-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h7l2 2h9v11H3z"/><path d="M12 11v6M9 14l3-3 3 3"/></symbol>
+    <symbol id="i-new" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l4 4v14H6z"/><path d="M12 10v7M8.5 13.5h7"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h12a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2z"/><path d="M5 18a2 2 0 0 1 2-2h12M9 8h6"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square"><path d="M12 19V6M6 12l6-6 6 6"/></symbol>
+    <symbol id="i-hash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M9 4L7 20M17 4l-2 16M4 9h16M3 15h16"/></symbol>
+  </defs>
+</svg>
+
+<a class="skip-link" href="#main">Skip to the invoice</a>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <svg aria-hidden="true"><use href="#i-mark"/></svg>
+      <h1 id="top" tabindex="-1">Invoice Generator</h1>
+    </div>
+
+    <dl class="totals" aria-label="Running totals">
+      <div><dt>Taxable</dt><dd class="t-taxable" id="bar-taxable">R 0</dd></div>
+      <div><dt>PAYE 25%</dt><dd class="t-paye" id="bar-paye">R 0</dd></div>
+      <div><dt>Extras</dt><dd class="t-extras" id="bar-extras">R 0</dd></div>
+      <div><dt>Grand total</dt><dd class="t-grand" id="bar-grand">R 0</dd></div>
+    </dl>
+
+    <div class="bar-tools">
+      <p class="autosave" id="autosave" data-state="idle">
+        <span class="autosave-dot" aria-hidden="true"></span>
+        <span id="autosave-label">Not saved yet</span>
+      </p>
+      <div class="actions" role="toolbar" aria-label="Invoice actions">
+        <button type="button" class="btn" id="new-btn"><svg aria-hidden="true"><use href="#i-new"/></svg><span class="btn-label">New invoice</span></button>
+        <button type="button" class="btn btn-outline" id="save-btn" title="Save everything as a .cpa file you can load later"><svg aria-hidden="true"><use href="#i-save"/></svg><span class="btn-label">Save session</span></button>
+        <button type="button" class="btn" id="load-btn" title="Load a .cpa session file"><svg aria-hidden="true"><use href="#i-open"/></svg><span class="btn-label">Load session</span></button>
+        <input type="file" id="load-input" accept=".cpa,.json,application/json" hidden>
+        <span class="divider" aria-hidden="true"></span>
+        <button type="button" class="btn btn-primary" id="xlsx-btn"><svg aria-hidden="true"><use href="#i-download"/></svg><span class="btn-label">Export XLSX</span></button>
+        <button type="button" class="btn" id="pdf-btn"><svg aria-hidden="true"><use href="#i-download"/></svg><span class="btn-label">Export PDF</span></button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main id="main" tabindex="-1">
+
+  <!-- 1. Parties -->
+  <section aria-labelledby="h-parties">
+    <div class="section-head">
+      <span class="section-num" aria-hidden="true">1</span>
+      <h2 id="h-parties">Invoice parties</h2>
+      <span class="section-line" aria-hidden="true"></span>
+    </div>
+
+    <div class="panel">
+      <div class="parties">
+        <div>
+          <div class="group-head">
+            <h3 class="group-title">To: production company</h3>
+            <button type="button" class="btn btn-quiet" data-open-directory="production"><svg aria-hidden="true"><use href="#i-book"/></svg>Directory</button>
+          </div>
+          <div class="stack">
+            <div class="field"><label for="to-name">Company name</label><input id="to-name" type="text" maxlength="200" autocomplete="organization" placeholder="e.g. Karoo Light Pictures"></div>
+            <div class="field"><label for="to-addr">Company address</label><input id="to-addr" type="text" maxlength="200" placeholder="Street, city, province"></div>
+            <div class="grid-2">
+              <div class="field"><label for="to-reg">Reg number</label><input id="to-reg" type="text" maxlength="200" placeholder="e.g. 2021/123456/07"></div>
+              <div class="field"><label for="to-vat">VAT number</label><input id="to-vat" type="text" maxlength="200" inputmode="numeric" placeholder="e.g. 4123456789"></div>
+            </div>
+            <div class="field"><label for="job-name">Job / production name</label><input id="job-name" type="text" maxlength="200" placeholder="e.g. Takealot TVC 2026"></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="group-head">
+            <h3 class="group-title">From: crew member</h3>
+            <button type="button" class="btn btn-quiet" data-open-directory="crew"><svg aria-hidden="true"><use href="#i-book"/></svg>Directory</button>
+          </div>
+
+          <div class="inv-meta">
+            <div class="field">
+              <label for="inv-number">Invoice number</label>
+              <div class="inv-number-row">
+                <input id="inv-number" type="text" maxlength="40" autocomplete="off" spellcheck="false" aria-describedby="inv-status">
+                <button type="button" class="btn btn-quiet" id="seq-btn" title="Change the prefix or next number"><svg aria-hidden="true"><use href="#i-hash"/></svg><span class="visually-hidden">Numbering settings</span></button>
+              </div>
+              <span class="inv-status" id="inv-status" data-state="auto">Next in sequence</span>
+            </div>
+            <div class="field">
+              <label for="inv-date">Invoice date</label>
+              <input id="inv-date" type="date">
+            </div>
+          </div>
+
+          <div class="stack">
+            <div class="grid-2">
+              <div class="field"><label for="from-name">Full name</label><input id="from-name" type="text" maxlength="200" autocomplete="name" placeholder="e.g. Thandi Mokoena"></div>
+              <div class="field"><label for="from-designation">Designation / role</label><input id="from-designation" type="text" maxlength="200" autocomplete="organization-title" placeholder="e.g. Prop master"></div>
+            </div>
+            <div class="field"><label for="from-addr">Address</label><input id="from-addr" type="text" maxlength="200" autocomplete="street-address" placeholder="Street, city, province"></div>
+            <div class="grid-3">
+              <div class="field"><label for="from-id">ID / passport</label><input id="from-id" type="text" maxlength="200" autocomplete="off"></div>
+              <div class="field"><label for="from-contact">Contact</label><input id="from-contact" type="tel" maxlength="200" autocomplete="tel"></div>
+              <div class="field"><label for="from-tax">Tax number</label><input id="from-tax" type="text" maxlength="200" autocomplete="off" inputmode="numeric"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-foot">
+        <button type="button" class="btn btn-quiet" data-save-directory="crew"><svg aria-hidden="true"><use href="#i-save"/></svg>Save crew to directory</button>
+        <button type="button" class="btn btn-quiet" data-save-directory="production"><svg aria-hidden="true"><use href="#i-save"/></svg>Save production to directory</button>
+      </div>
+
+      <div class="panel-split">
+        <h3 class="group-title">Banking details</h3>
+        <div class="grid-3 mt-3">
+          <div class="field"><label for="bank-name">Bank</label><input id="bank-name" type="text" maxlength="200" autocomplete="off" placeholder="e.g. FNB"></div>
+          <div class="field"><label for="bank-branch">Branch code</label><input id="bank-branch" type="text" maxlength="200" autocomplete="off" inputmode="numeric" placeholder="e.g. 250655"></div>
+          <div class="field"><label for="bank-acc">Account number</label><input id="bank-acc" type="text" maxlength="200" autocomplete="off" inputmode="numeric"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. Rate -->
+  <section aria-labelledby="h-rate">
+    <div class="section-head">
+      <span class="section-num" aria-hidden="true">2</span>
+      <h2 id="h-rate">Daily rate</h2>
+      <span class="section-line" aria-hidden="true"></span>
+    </div>
+
+    <div class="rate-hero">
+      <div class="field">
+        <div class="rate-input">
+          <label for="daily-rate">R<span class="visually-hidden"> daily rate</span></label>
+          <input id="daily-rate" type="number" inputmode="decimal" min="0" max="10000000" step="any" value="2000" aria-describedby="rate-error">
+        </div>
+        <span class="field-error" id="rate-error"></span>
+      </div>
+      <p class="rate-derived">
+        Hourly rate (day rate / 10): <strong id="hourly-display" class="num">R 200</strong>
+        <small id="base-hrs-label">CPA standard: 1 day = 10 base hours</small>
+      </p>
+      <fieldset class="segmented">
+        <legend class="visually-hidden">Day length</legend>
+        <input type="radio" name="base-hours" id="base-10" value="10" checked>
+        <label for="base-10">10 hr standard</label>
+        <input type="radio" name="base-hours" id="base-12" value="12">
+        <label for="base-12">12 hr deal</label>
+      </fieldset>
+    </div>
+  </section>
+
+  <!-- 3. Timesheet -->
+  <section aria-labelledby="h-ts">
+    <div class="section-head">
+      <span class="section-num" aria-hidden="true">3</span>
+      <h2 id="h-ts">Services rendered: timesheet</h2>
+      <span class="section-line" aria-hidden="true"></span>
+    </div>
+
+    <div class="notice">
+      <strong>CPA overtime rules</strong>
+      <ul>
+        <li>10hr standard: hrs 1-10 base, hrs 11-14 x1.5, hrs 15+ x2.0</li>
+        <li>12hr deal: hrs 1-12 base, hrs 13-14 x1.5, hrs 15-18 x2.0</li>
+        <li>Past midnight on the last day: x3.0</li>
+        <li>Hourly rate = day rate / 10</li>
+        <li><span class="warn">T/A penalty</span> under 10hr turnaround: first 2hrs x1, next 2hrs x2, thereafter x3 pro rata</li>
+      </ul>
+    </div>
+
+    <div class="ts-scroll" role="region" aria-labelledby="h-ts" tabindex="0">
+      <table class="ts">
+        <caption class="visually-hidden">Days worked, one row per day. Overtime and amounts are calculated.</caption>
+        <colgroup>
+          <col class="w-date"><col class="w-desc"><col class="w-type">
+          <col class="w-time"><col class="w-time"><col class="w-days"><col class="w-hrs">
+          <col class="w-h"><col class="w-c"><col class="w-h"><col class="w-c"><col class="w-h"><col class="w-c">
+          <col class="w-tah"><col class="w-c"><col class="w-amt"><col class="w-del">
+        </colgroup>
+        <thead>
+          <tr>
+            <th scope="col" class="left">Date</th>
+            <th scope="col" class="left">Description</th>
+            <th scope="col" class="left">Type</th>
+            <th scope="col">Call</th>
+            <th scope="col">Wrap</th>
+            <th scope="col">Days</th>
+            <th scope="col">Hrs</th>
+            <th scope="col" class="g-ot">x1.5 hrs</th>
+            <th scope="col" class="g-ot">x1.5 cost</th>
+            <th scope="col" class="g-ot">x2.0 hrs</th>
+            <th scope="col" class="g-ot">x2.0 cost</th>
+            <th scope="col" class="g-ot">x3.0 hrs</th>
+            <th scope="col" class="g-ot">x3.0 cost</th>
+            <th scope="col" class="g-ta">T/A hrs</th>
+            <th scope="col" class="g-ta">T/A cost</th>
+            <th scope="col" class="g-amt">Amount</th>
+            <th scope="col"><span class="visually-hidden">Remove</span></th>
+          </tr>
+        </thead>
+        <tbody id="ts-body"></tbody>
+      </table>
+    </div>
+    <button type="button" class="add-row" id="add-row">+ Add day</button>
+
+    <div class="subtotals">
+      <div class="st-row ta" id="st-ta-row" hidden>
+        <span class="st-label">T/A penalties included <small><span id="st-ta-days">0</span> violation(s), tiered x1 / x2 / x3 pro rata, already in the day amounts above</small></span>
+        <span class="st-value" id="st-ta-total">R 0</span>
+      </div>
+      <div class="st-row"><span class="st-label">Subtotal: days worked (taxable)</span><span class="st-value" id="st-taxable">R 0</span></div>
+      <div class="st-row total"><span class="st-label">Total taxable income</span><span class="st-value" id="st-total">R 0</span></div>
+      <div class="st-row paye"><span class="st-label">Deductible PAYE at 25% <small>For information. Production deducts it.</small></span><span class="st-value" id="st-paye">R 0</span></div>
+    </div>
+  </section>
+
+  <!-- 4. Extras -->
+  <section aria-labelledby="h-extras">
+    <div class="section-head">
+      <span class="section-num" aria-hidden="true">4</span>
+      <h2 id="h-extras">Extras: non-taxable allowances</h2>
+      <span class="section-line" aria-hidden="true"></span>
+    </div>
+
+    <div class="panel">
+      <table class="extras">
+        <caption class="visually-hidden">Non-taxable allowances, days times rate</caption>
+        <thead>
+          <tr>
+            <th scope="col">Item <span class="tag">Non-taxable</span></th>
+            <th scope="col" class="r">Days</th>
+            <th scope="col" class="r">Rate (R/day)</th>
+            <th scope="col" class="r">Amount</th>
+          </tr>
+        </thead>
+        <tbody id="extras-body"></tbody>
+      </table>
+      <div class="extras-foot"><span>Extras subtotal</span><span id="extras-sub">R 0</span></div>
+    </div>
+
+    <div class="subtotals">
+      <div class="st-row"><span class="st-label">Taxable income</span><span class="st-value" id="gt-taxable">R 0</span></div>
+      <div class="st-row paye"><span class="st-label">Less: PAYE 25%</span><span class="st-value" id="gt-paye">&minus; R 0</span></div>
+      <div class="st-row extras"><span class="st-label">Plus: non-taxable extras</span><span class="st-value" id="gt-extras">R 0</span></div>
+      <div class="st-row grand"><span class="st-label">Grand total <small>Net of PAYE</small></span><span class="st-value" id="grand-total">R 0</span></div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <p>Rates per Commercial Producers Association of South Africa guidelines. Everything you enter stays in this browser until you clear it. Nothing is sent anywhere. <a href="https://github.com/Ronan-R-R/invoice-generator">Source and licence</a>.</p>
+  <div class="footer-actions">
+    <button type="button" class="btn btn-danger" id="clear-btn">Clear saved data</button>
+  </div>
+</footer>
+
+<button type="button" class="to-top" id="to-top" aria-label="Back to top"><svg aria-hidden="true"><use href="#i-up"/></svg></button>
+
+<div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+
+<div class="print-sheet" id="print-sheet"></div>
+
+<!-- Directory -->
+<dialog id="dir-dialog" aria-labelledby="dir-title">
+  <div class="dialog-head">
+    <h2 id="dir-title">Crew directory</h2>
+    <button type="button" class="icon-btn dialog-close" data-close aria-label="Close directory"><svg aria-hidden="true"><use href="#i-x"/></svg></button>
+  </div>
+  <div class="tabs" role="tablist" aria-label="Directory views">
+    <button type="button" role="tab" id="tab-list" aria-controls="dir-list-panel" aria-selected="true">Saved profiles</button>
+    <button type="button" role="tab" id="tab-add" aria-controls="dir-add-panel" aria-selected="false" tabindex="-1">Add new</button>
+  </div>
+  <div class="dialog-body">
+    <div role="tabpanel" id="dir-list-panel" aria-labelledby="tab-list">
+      <ul class="dir-list" id="dir-list"></ul>
+    </div>
+    <div role="tabpanel" id="dir-add-panel" aria-labelledby="tab-add" hidden>
+      <form id="dir-form" class="stack" novalidate>
+        <div id="dir-crew-fields" class="stack">
+          <div class="grid-2">
+            <div class="field"><label for="df-name">Full name</label><input id="df-name" type="text" maxlength="200" autocomplete="off" aria-describedby="df-name-error"><span class="field-error" id="df-name-error"></span></div>
+            <div class="field"><label for="df-designation">Designation / role</label><input id="df-designation" type="text" maxlength="200"></div>
+          </div>
+          <div class="field"><label for="df-addr">Address</label><input id="df-addr" type="text" maxlength="200"></div>
+          <div class="grid-2">
+            <div class="field"><label for="df-contact">Contact</label><input id="df-contact" type="tel" maxlength="200"></div>
+            <div class="field"><label for="df-tax">Tax number</label><input id="df-tax" type="text" maxlength="200"></div>
+          </div>
+          <div class="grid-3">
+            <div class="field"><label for="df-bank">Bank</label><input id="df-bank" type="text" maxlength="200"></div>
+            <div class="field"><label for="df-branch">Branch code</label><input id="df-branch" type="text" maxlength="200" inputmode="numeric"></div>
+            <div class="field"><label for="df-acc">Account number</label><input id="df-acc" type="text" maxlength="200" inputmode="numeric"></div>
+          </div>
+          <div class="grid-2">
+            <div class="field"><label for="df-id">ID / passport</label><input id="df-id" type="text" maxlength="200"></div>
+            <div class="field"><label for="df-rate">Default day rate (R)</label><input id="df-rate" type="number" min="0" step="any" inputmode="decimal" aria-describedby="df-rate-error"><span class="field-error" id="df-rate-error"></span></div>
+          </div>
+        </div>
+        <div id="dir-prod-fields" class="stack" hidden>
+          <div class="grid-2">
+            <div class="field"><label for="dp-name">Company name</label><input id="dp-name" type="text" maxlength="200" aria-describedby="dp-name-error"><span class="field-error" id="dp-name-error"></span></div>
+            <div class="field"><label for="dp-vat">VAT number</label><input id="dp-vat" type="text" maxlength="200"></div>
+          </div>
+          <div class="field"><label for="dp-addr">Company address</label><input id="dp-addr" type="text" maxlength="200"></div>
+          <div class="field"><label for="dp-reg">Reg number</label><input id="dp-reg" type="text" maxlength="200"></div>
+        </div>
+        <div><button type="submit" class="btn btn-primary">Save to directory</button></div>
+      </form>
+    </div>
+  </div>
+  <div class="dialog-foot">
+    <button type="button" class="btn btn-quiet" id="dir-export"><svg aria-hidden="true"><use href="#i-download"/></svg>Export directory</button>
+    <button type="button" class="btn btn-quiet" id="dir-import"><svg aria-hidden="true"><use href="#i-open"/></svg>Import directory</button>
+    <input type="file" id="dir-import-input" accept=".json,application/json" hidden>
+    <span class="spacer"></span>
+    <button type="button" class="btn" data-close>Done</button>
+  </div>
+</dialog>
+
+<!-- Numbering -->
+<dialog id="seq-dialog" class="small" aria-labelledby="seq-title">
+  <form id="seq-form" novalidate>
+    <div class="dialog-head">
+      <h2 id="seq-title">Invoice numbering</h2>
+      <button type="button" class="icon-btn dialog-close" data-close aria-label="Close numbering settings"><svg aria-hidden="true"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="dialog-body">
+      <p>Numbers run in sequence in this browser. A number is used up the first time you export the invoice it belongs to. Set the next number here to carry on from invoices you issued somewhere else.</p>
+      <div class="grid-2">
+        <div class="field">
+          <label for="seq-prefix">Prefix</label>
+          <input id="seq-prefix" type="text" maxlength="10" autocomplete="off" spellcheck="false" aria-describedby="seq-prefix-hint seq-prefix-error">
+          <span class="field-hint" id="seq-prefix-hint">Letters and digits, up to 10</span>
+          <span class="field-error" id="seq-prefix-error"></span>
+        </div>
+        <div class="field">
+          <label for="seq-next">Next number</label>
+          <input id="seq-next" type="number" min="1" max="999999" step="1" inputmode="numeric" aria-describedby="seq-next-error">
+          <span class="field-error" id="seq-next-error"></span>
+        </div>
+      </div>
+      <p class="seq-preview" aria-live="polite">Next invoice: <strong id="seq-preview">INV-2026-0001</strong></p>
+    </div>
+    <div class="dialog-foot">
+      <button type="button" class="btn" data-close>Cancel</button>
+      <button type="submit" class="btn btn-primary">Save numbering</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Confirm -->
+<dialog id="confirm-dialog" class="small" aria-labelledby="confirm-title" aria-describedby="confirm-text">
+  <div class="dialog-head">
+    <h2 id="confirm-title">Are you sure</h2>
+  </div>
+  <div class="dialog-body"><p id="confirm-text"></p></div>
+  <div class="dialog-foot">
+    <button type="button" class="btn" id="confirm-cancel">Cancel</button>
+    <button type="button" class="btn btn-primary" id="confirm-ok">Confirm</button>
+  </div>
+</dialog>
+
+</body>
+</html>

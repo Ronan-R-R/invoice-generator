@@ -1,0 +1,14 @@
+{
+  "name": "invoice-generator",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Crew invoice generator for South African commercial productions, CPA rates, XLSX and PDF export.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\"",
+    "start": "python -m http.server 8765 --bind 127.0.0.1"
+  }
+}
