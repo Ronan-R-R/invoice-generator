@@ -435,8 +435,12 @@ table.extras input:focus-visible { outline: 2px solid var(--focus); outline-offs
 
 .site-footer { max-width: 1400px; margin: 0 auto; padding: var(--sp-6) var(--sp-5) 96px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: var(--sp-4); justify-content: space-between; align-items: center; font-size: var(--fs-xs); color: var(--text-muted); }
 .site-footer p { max-width: 70ch; }
-.site-footer a { color: var(--accent); text-underline-offset: 3px; }
+.footer-text { display: flex; flex-direction: column; gap: var(--sp-2); }
+.site-footer .footer-cpa { max-width: none; text-transform: uppercase; letter-spacing: 0.1em; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-3); }
+.footer-sep { color: var(--text-muted); }
+.site-footer a { color: var(--accent); text-underline-offset: 3px; transition: color var(--t-fast); }
 .site-footer a:hover { color: var(--accent-hover); }
+.site-footer a:active { color: var(--focus); }
 .footer-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
 
 /* ---------------------------------------------------------------- toast + back to top */
