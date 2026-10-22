@@ -135,6 +135,25 @@ test('xlsx total rows carry their labels', () => {
   }
 });
 
+test('xlsx widens columns B and H to fit the longest value', () => {
+  const longDesc = 'Shoot day 3, second unit, Clanwilliam dam location';
+  const longAddr = '14 Bree Street, Cape Town City Centre, Western Cape';
+  const invoice = core.computeInvoice(sampleState({ rows: [{ type: 'Shoot Day', desc: longDesc, call: '07:00', wrap: '17:00' }] }));
+  const { wb } = buildWorkbook(XLSX, { header: header({ fromAddr: longAddr }), invoice });
+  const cols = wb.Sheets.Invoice['!cols'];
+  assert.ok(cols[1].wch >= longDesc.length, 'B fits the description, got ' + cols[1].wch);
+  assert.ok(cols[7].wch >= longAddr.length, 'H fits the crew address, got ' + cols[7].wch);
+});
+
+test('xlsx keeps B and H at their minimum widths for short values and caps runaway text', () => {
+  const invoice = core.computeInvoice(sampleState({ rows: [{ type: 'Shoot Day', desc: 'x'.repeat(200), call: '07:00', wrap: '17:00' }] }));
+  const short = buildWorkbook(XLSX, { header: { invNumber: 'INV-2026-0001' }, invoice: core.computeInvoice(sampleState({ rows: [] })) }).wb.Sheets.Invoice['!cols'];
+  assert.equal(short[1].wch, 26);
+  assert.equal(short[7].wch, 11);
+  const long = buildWorkbook(XLSX, { header: header(), invoice }).wb.Sheets.Invoice['!cols'];
+  assert.equal(long[1].wch, 80);
+});
+
 test('xlsx with no timesheet rows still builds and totals to extras only', () => {
   const invoice = core.computeInvoice(sampleState({ rows: [] }));
   const { wb } = buildWorkbook(XLSX, { header: header(), invoice });

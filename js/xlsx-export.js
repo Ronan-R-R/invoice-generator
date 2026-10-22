@@ -293,10 +293,30 @@
       { bg: C.OFF_WHITE, color: C.TEXT_MUTED, sz: 8, italic: true, indent: 1 });
     merge(R, 0, NCOLS - 1);
 
+    // Excel cannot auto-fit a column on open, so B and H are sized from their longest value.
+    // Text inside a multi-column merge belongs to the merge, not the column, so it is skipped.
+    const inMerge = (r, c) => merges.some(m => m.s.c !== m.e.c && r >= m.s.r && r <= m.e.r && c >= m.s.c && c <= m.e.c);
+    const fitWidth = (col, min, max) => {
+      const c = col.charCodeAt(0) - 65;
+      let longest = 0;
+      Object.keys(ws).forEach(addr => {
+        const m = /^([A-Z]+)(\d+)$/.exec(addr);
+        if (!m || m[1] !== col) return;
+        const cell = ws[addr];
+        if (cell.f || cell.v === '' || cell.v == null || inMerge(Number(m[2]) - 1, c)) return;
+        const bold = cell.s && cell.s.font && cell.s.font.bold;
+        longest = Math.max(longest, String(cell.v).length * (bold ? 1.1 : 1));
+      });
+      return Math.min(Math.max(min, Math.ceil(longest) + 2), max);
+    };
+
     ws['!ref'] = 'A1:' + colName(NCOLS - 1) + R;
     ws['!merges'] = merges;
     ws['!rows'] = rowH;
-    ws['!cols'] = [13, 26, 6, 7, 11, 7, 11, 7, 11, 7, 11, 6, 13].map(wch => ({ wch }));
+    const widths = [13, 26, 6, 7, 11, 7, 11, 7, 11, 7, 11, 6, 13];
+    widths[1] = fitWidth('B', 26, 80);
+    widths[7] = fitWidth('H', 11, 80);
+    ws['!cols'] = widths.map(wch => ({ wch }));
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Invoice');
