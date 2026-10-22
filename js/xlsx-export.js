@@ -318,7 +318,7 @@
       return Math.min(Math.max(min, Math.ceil(longest) + 2), max);
     };
 
-    const widths = [13, 26, 6, 7, 11, 7, 11, 7, 11, 7, 11, 6, 13];
+    const widths = [13, 26, 6, 7, 11, 7, 11, 11, 11, 7, 11, 6, 13];
     widths[1] = fitWidth('B', 26, 80);
 
     const lineCount = ({ text, from, to }) => {
